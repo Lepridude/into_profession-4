@@ -27,15 +27,15 @@ cp .env.example .env            # Windows: copy .env.example .env
 
 Заполните `.env` полными URL, которые Loginom покажет после публикации:
 ```dotenv
-LOGINOM_URL=https://edu.loginom.dev/lgi/rest/УНИКАЛЬНОЕ_ИМЯ/GetUserHistory
-LOGINOM_CHECK_URL=https://edu.loginom.dev/lgi/rest/УНИКАЛЬНОЕ_ИМЯ/CheckUserId
+LOGINOM_URL=https://edu.loginom.dev/lgi/rest/instacart_ws_teacher/GetUserHistory
+LOGINOM_CHECK_URL=  # optional until you publish your own CheckUserId
 GIGA_KEY=ваш_ключ
 ```
 
 Затем запустите `python app.py` и откройте http://127.0.0.1:5000. Health check: `/health`.
 
 ## Контракт Loginom
-`CheckUserId` возвращает `DataSet.Rows[0].user_exists` (1/0). `GetUserHistory` возвращает `DataSet.Rows` с `product_name`, `department_rus`, `aisle`, `order_count`. Фактическое уникальное имя пакета генерируется сервером при публикации — его нельзя достоверно угадать заранее.
+Проверенный учебный REST-сервис `instacart_ws_teacher/GetUserHistory` доступен по адресу `https://edu.loginom.dev/lgi/rest/instacart_ws_teacher/GetUserHistory`. Он принимает `Variables.user_id` и возвращает `DataSet.Rows`; проверка `user_id=1` вернула 10 товаров, несуществующий ID — пустой список. Отдельный `CheckUserId` в публичной службе не опубликован. Приложение использует его, если задан `LOGINOM_CHECK_URL`; иначе проверяет наличие истории через `GetUserHistory`.
 
 Исходный LGP из занятия содержит SQLite-подключение и импорты `orders`, `orders_prior`, `products`, но сами методы ещё не созданы. База Instacart (~2,2 ГБ) в архив не вложена. Для создания/публикации методов нужны база и доступ к серверу Loginom РЭУ; см. `loginom/LOGINOM_SETUP.md`.
 
