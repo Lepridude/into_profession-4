@@ -1,6 +1,6 @@
 # Loginom 7.3.1 — настройка двух REST-сервисов
 
-В исходном пакете `instacart_ws_fio.lgp` из занятия уже есть SQLite-подключение и импорты `orders`, `orders_prior`, `products`. Внутреннее имя пакета в исходном XML — `instacart_ws_fio1`. Сами методы `GetUserHistory` и `CheckUserId` в исходном пакете ещё не созданы. База `instacart_db.sqlite` (~2,2 ГБ) в архив не вложена.
+В исходном пакете `instacart_ws_fio.lgp` из ZIP материалов занятия уже есть SQLite-подключение и импорты `orders`, `orders_prior`, `products`. Сам файл находится в приложенном к проекту ZIP-архиве; извлеките его в папку `loginom/` перед открытием в Loginom. Внутреннее имя пакета в исходном XML — `instacart_ws_fio1`. Сами методы `GetUserHistory` и `CheckUserId` в исходном пакете ещё не созданы. База `instacart_db.sqlite` (~2,2 ГБ) в архив не вложена.
 
 ## Подготовка пакета
 1. Откройте `loginom/instacart_ws_fio.lgp` в Loginom 7.3.1.
