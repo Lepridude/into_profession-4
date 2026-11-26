@@ -2,52 +2,95 @@
 
 **Студент:** Архангельский Данила Андреевич  
 **Группа:** ИСТ-05  
-**Репозиторий:** https://github.com/Lepridude/into_profession-4
+**Основной удалённый репозиторий:** https://github.com/Lepridude/into_profession-4  
+**Платформа контроля версий:** GitHub
 
-## Состав проекта
-- `app.py` — Flask: проверка `user_id` через `CheckUserId`, сессии, HTML- и JSON-маршруты.
-- `business-rules.py` — ровно три функции задания: `get_user_history`, `build_products_text`, `ask_gigachat`.
-- `templates/index.html` — интерфейс.
-- `demo_rest_api.ipynb` — ноутбук в корне; копия также в `notebooks/`.
-- Исходный `instacart_ws_fio.lgp` из материалов занятия включён в подготовленный ZIP-архив проекта (в GitHub хранится SQL и инструкция).
-- `loginom/queries.sql`, `loginom/LOGINOM_SETUP.md` — запросы и инструкция двух Loginom-сервисов.
-- `tests/`, `.github/workflows/tests.yml` — автоматические тесты и CI.
-- `reflection4.md` — рефлексия.
-- `Procfile`, `AMVERA_DEPLOY.md` — подготовка к облачному запуску.
+[![Python tests](https://github.com/Lepridude/into_profession-4/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Lepridude/into_profession-4/actions/workflows/tests.yml)
+
+## Что делает приложение
+
+1. Принимает `user_id` из HTML-формы.
+2. Проверяет пользователя через Loginom.
+3. Получает до 10 наиболее часто покупаемых товаров.
+4. Формирует контекст и передаёт его в GigaChat.
+5. Показывает товары и рекомендацию в HTML, а результат также доступен через JSON API.
+
+## Структура проекта
+
+- `app.py` — Flask-приложение, сессия, HTML- и JSON-маршруты.
+- `business-rules.py` — три обязательные функции: `get_user_history`, `build_products_text`, `ask_gigachat`.
+- `templates/index.html` — пользовательский интерфейс.
+- `demo_rest_api.ipynb` и `notebooks/demo_rest_api.ipynb` — проверка Loginom и GigaChat.
+- `loginom/queries.sql` — SQL-запросы для `GetUserHistory` и `CheckUserId`.
+- `loginom/LOGINOM_SETUP.md` — настройка и публикация сервисов в Loginom.
+- `tests/` и `.github/workflows/tests.yml` — тесты и CI на GitHub Actions.
+- `amvera.yml`, `Procfile`, `AMVERA_DEPLOY.md` — конфигурация облачного запуска и инструкция.
 
 ## Локальный запуск
-Python 3.11 рекомендуется.
+
+Нужен Python 3.11 или новее.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate       # Windows: .venv\\Scripts\\activate
 pip install -r requirements.txt
 cp .env.example .env            # Windows: copy .env.example .env
+python app.py
 ```
 
-Заполните `.env` полными URL, которые Loginom покажет после публикации:
-```dotenv
-LOGINOM_URL=https://edu.loginom.dev/lgi/rest/instacart_ws_teacher/GetUserHistory
-LOGINOM_CHECK_URL=  # optional until you publish your own CheckUserId
-GIGA_KEY=ваш_ключ
-```
+Откройте http://127.0.0.1:5000. Для тестов:
 
-Затем запустите `python app.py` и откройте http://127.0.0.1:5000. Health check: `/health`.
-
-## Контракт Loginom
-Проверенный учебный REST-сервис `instacart_ws_teacher/GetUserHistory` доступен по адресу `https://edu.loginom.dev/lgi/rest/instacart_ws_teacher/GetUserHistory`. Он принимает `Variables.user_id` и возвращает `DataSet.Rows`; проверка `user_id=1` вернула 10 товаров, несуществующий ID — пустой список. Отдельный `CheckUserId` в публичной службе не опубликован. Приложение использует его, если задан `LOGINOM_CHECK_URL`; иначе проверяет наличие истории через `GetUserHistory`.
-
-Исходный LGP из занятия содержит SQLite-подключение и импорты `orders`, `orders_prior`, `products`, но сами методы ещё не созданы. База Instacart (~2,2 ГБ) в архив не вложена. Для создания/публикации методов нужны база и доступ к серверу Loginom РЭУ; см. `loginom/LOGINOM_SETUP.md`.
-
-## Тесты
 ```bash
 pip install -r requirements-dev.txt
 PYTHONPATH=. pytest -q
 ```
-Тесты используют mock-ответы API и не подтверждают сетевую доступность Loginom/GigaChat.
 
-## Amvera
-`amvera.yml` задаёт Python 3.11, запуск Gunicorn на `0.0.0.0:8000` и `containerPort: 8000`. В панели Amvera загрузите проект без `.env` как обычного файла, импортируйте его значения в «Переменные и секреты», соберите и запустите приложение. Проверьте `/health`, авторизацию и анализ. После проверки остановите приложение для экономии баланса; включите перед проверкой 17.12.2026.
+## Переменные окружения
 
-## Текущий статус
-Кодовая часть подготовлена. Реальная интеграция требует опубликованных Loginom-сервисов, доступной серверу базы Instacart и живой проверки GigaChat. Развёртывание требует доступа к аккаунту Amvera. Эти внешние этапы не отмечены как завершённые.
+Заполните локальный `.env`:
+
+```dotenv
+LOGINOM_URL=https://edu.loginom.dev/lgi/rest/instacart_ws_teacher/GetUserHistory
+LOGINOM_CHECK_URL=
+LOGINOM_TIMEOUT=45
+GIGA_KEY=ваш_ключ_GigaChat
+GIGA_MODEL=GigaChat-2
+SECRET_KEY=длинная_случайная_строка
+COOKIE_SECURE=0
+FLASK_DEBUG=0
+```
+
+Файл `.env` исключён через `.gitignore`. Не добавляйте в GitHub ключи GigaChat, пароли, токены или реальные секреты.
+
+## Loginom: подтверждённый контракт и ограничение
+
+Публичный учебный метод `GetUserHistory` использует URL:
+
+`https://edu.loginom.dev/lgi/rest/instacart_ws_teacher/GetUserHistory`
+
+Он принимает POST с JSON `{"Variables":{"user_id":1}}` и возвращает строки в `DataSet.Rows`. Проверка для существующего ID возвращала товары, для несуществующего — пустой список.
+
+В публичном учебном пакете отдельный метод `CheckUserId` не опубликован. Поэтому приложение и ноутбук поддерживают два режима:
+
+- если задан `LOGINOM_CHECK_URL`, сначала вызывается отдельный `CheckUserId`;
+- если URL пуст, используется резервная проверка по наличию истории в `GetUserHistory`.
+
+Резервный вариант подтверждает наличие заказов пользователя, но формально не заменяет отдельный метод `CheckUserId`. Для полного соответствия заданию опубликуйте `CheckUserId` в своём пакете Loginom и укажите выданный сервером URL в `.env`. Инструкция и SQL находятся в `loginom/`.
+
+Исходный `.lgp` и база Instacart не должны считаться опубликованными только потому, что SQL и инструкция находятся в репозитории. Исходный пакет не содержит готовых опубликованных модулей, а база данных объёмом около 2,2 ГБ должна быть подключена в Loginom отдельно.
+
+## GitHub и автоматические тесты
+
+GitHub — основной удалённый репозиторий этого проекта. Изменения сохраняются в `main`; workflow запускается при push и pull request. Последний проверенный запуск GitHub Actions завершился успешно. Тесты используют подменённые ответы API и сами по себе не доказывают доступность реального Loginom или GigaChat.
+
+## Статус и оставшиеся внешние шаги
+
+- [x] Flask MVP, HTML-интерфейс, сессии и JSON-маршрут.
+- [x] Три требуемые функции бизнес-логики.
+- [x] Публичный `GetUserHistory` проверен; резервная проверка user_id реализована.
+- [x] SQL, инструкция Loginom, ноутбук, тесты и GitHub Actions подготовлены.
+- [ ] Опубликовать отдельный `CheckUserId` в Loginom и указать URL.
+- [ ] Проверить реальный вызов GigaChat с действующим `GIGA_KEY`.
+- [ ] Создать/проверить приложение в Amvera, привязать GitHub, добавить переменные, домен и выполнить облачный запуск.
+
+Деплой в Amvera описан в [AMVERA_DEPLOY.md](AMVERA_DEPLOY.md). Приложение должно быть доступно для проверки 17 декабря 2026 года; до этого его можно останавливать для экономии баланса.
