@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import os
 from pathlib import Path
+import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
@@ -46,8 +47,23 @@ def login():
         return page(error="user_id должен быть положительным целым числом."), 400
     user_id = int(raw)
     try:
-        rules = load_business_rules()
-        if not rules._check_user_id(user_id):
+        check_url = os.getenv("LOGINOM_CHECKUSERID_URL") or (
+            f"{os.getenv('LOGINOM_BASE_URL', 'https://edu.loginom.dev/lgi/rest').rstrip('/')}/"
+            f"{os.getenv('LOGINOM_PACKAGE', 'instacart_ws_fio')}/"
+            f"{os.getenv('LOGINOM_CHECK_SERVICE', 'CheckUserId')}"
+        )
+        response = requests.post(check_url, json={"Variables": {"user_id": user_id}},
+                                 timeout=int(os.getenv("LOGINOM_TIMEOUT", "45")))
+        response.raise_for_status()
+        data = response.json()
+        rows = data.get("DataSet", {}).get("Rows", []) if isinstance(data, dict) else []
+        if rows and isinstance(rows[0], dict) and "user_exists" in rows[0]:
+            exists = str(rows[0]["user_exists"]).strip().casefold() in {"1", "true", "yes", "да"}
+        else:
+            variables = data.get("Variables", {}) if isinstance(data, dict) else {}
+            value = variables.get("user_exists", variables.get("exists")) if isinstance(variables, dict) else None
+            exists = str(value).strip().casefold() in {"1", "true", "yes", "да"}
+        if not exists:
             return page(error=f"Клиент с user_id={user_id} не найден в Instacart."), 404
     except Exception as exc:
         return page(error=f"Не удалось проверить клиента через Loginom: {exc}"), 502
