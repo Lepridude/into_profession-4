@@ -9,7 +9,7 @@
 - `business-rules.py` — ровно три функции задания: `get_user_history`, `build_products_text`, `ask_gigachat`.
 - `templates/index.html` — интерфейс.
 - `demo_rest_api.ipynb` — ноутбук в корне; копия также в `notebooks/`.
-- `loginom/instacart_ws_fio.lgp` — исходный пакет занятия.
+- Исходный `instacart_ws_fio.lgp` из материалов занятия включён в подготовленный ZIP-архив проекта (в GitHub хранится SQL и инструкция).
 - `loginom/queries.sql`, `loginom/LOGINOM_SETUP.md` — запросы и инструкция двух Loginom-сервисов.
 - `tests/`, `.github/workflows/tests.yml` — автоматические тесты и CI.
 - `reflection4.md` — рефлексия.
