@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instacart — рекомендации</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#142238;--line:#2a3b52;--text:#edf3fb;--muted:#9aabc0;--accent:#a3e635}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0%,#20334e,transparent 45%),var(--bg);color:var(--text);font:15px/1.55 Inter,system-ui,sans-serif}
+main{width:min(1000px,calc(100% - 32px));margin:48px auto}.tag{color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+h1{font-size:clamp(30px,5vw,48px);line-height:1.08;letter-spacing:-.04em;margin:8px 0}.lead,.muted{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{padding:22px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#192a41,#101c2d);min-width:0}.wide{grid-column:1/-1}
+h2{font-size:18px;margin:0 0 14px}label{display:block;color:var(--muted);margin-bottom:8px}
+input{width:100%;padding:13px;border:1px solid #43546b;border-radius:10px;background:#0b1728;color:var(--text);font:inherit}
+button{padding:12px 16px;border:0;border-radius:10px;background:var(--accent);color:#17220a;font-weight:750;cursor:pointer;margin-top:12px}button:disabled{opacity:.35;cursor:not-allowed}
+.alert{padding:14px 16px;margin:18px 0;border-radius:12px;background:#3b1722;color:#fda4af;border:1px solid #7f3442}.success{background:#1b2d18;color:#bef264;border-color:#456b24}
+.status{color:var(--accent);font-size:13px;margin-top:12px}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:13px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted)}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#091321;padding:16px;border-radius:12px;border:1px solid var(--line);font:13px/1.6 ui-monospace,monospace}
+@media(max-width:700px){main{margin-top:28px}.grid{grid-template-columns:1fr}.wide{grid-column:auto}}
+</style></head>
+<body><main>
+<div class="tag">Instacart · аналитический MVP</div>
+<h1>Ваши покупки.<br>Персональные рекомендации.</h1>
+<p class="lead">История покупок из Loginom и краткая рекомендация от GigaChat.</p>
+{% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+{% if success %}<div class="alert success" role="status">{{ success }}</div>{% endif %}
+<section class="grid">
+<div class="card"><h2>01 / Клиент</h2>
+<form method="post" action="{{ url_for('login') }}"><label for="user_id">Идентификатор пользователя Instacart</label>
+<input id="user_id" type="number" name="user_id" min="1" step="1" placeholder="Например, 1" value="{{ user_id or '' }}" required>
+<button type="submit">Проверить и войти</button></form>
+{% if user_id %}<div class="status">Клиент {{ user_id }} подтверждён через Loginom</div><form method="post" action="{{ url_for('logout') }}"><button type="submit">Сменить клиента</button></form>{% else %}<p class="muted">Сначала проверьте user_id.</p>{% endif %}
+</div>
+<div class="card"><h2>02 / Анализ</h2><p class="muted">Получить до 10 часто покупаемых товаров и запросить персональную рекомендацию.</p>
+<form method="post" action="{{ url_for('history') }}"><button type="submit" {% if not user_id %}disabled{% endif %}>Запустить анализ</button></form></div>
+{% if products %}<div class="card wide"><h2>03 / Часто покупаемые товары</h2><div class="table-wrap"><table><thead><tr><th>#</th><th>Товар</th><th>Категория</th><th>Отдел</th><th>Покупок</th></tr></thead><tbody>
+{% for p in products %}<tr><td>{{ loop.index }}</td><td>{{ p.get('product_name','—') }}</td><td>{{ p.get('aisle','—') }}</td><td>{{ p.get('department_rus',p.get('department','—')) }}</td><td>{{ p.get('order_count','—') }}</td></tr>{% endfor %}
+</tbody></table></div></div>{% endif %}
+{% if recommendation %}<div class="card wide"><h2>04 / Рекомендация GigaChat</h2><pre>{{ recommendation }}</pre></div>{% endif %}
+{% if prompt_text %}<div class="card wide"><h2>Контекст запроса</h2><pre>{{ prompt_text }}</pre></div>{% endif %}
+</section><p class="muted">Учебный проект · Flask + Loginom REST API + GigaChat</p>
+</main></body></html>
