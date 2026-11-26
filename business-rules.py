@@ -1,4 +1,4 @@
-"""Business logic for the Instacart recommendation MVP."""
+"""Бизнес-логика MVP: Loginom REST API и GigaChat."""
 from __future__ import annotations
 import os
 from typing import Any
@@ -8,71 +8,63 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_gigachat.chat_models import GigaChat
 
 load_dotenv()
-LOGINOM_BASE_URL = os.getenv("LOGINOM_BASE_URL", "https://edu.loginom.dev/lgi/rest").rstrip("/")
-LOGINOM_PACKAGE = os.getenv("LOGINOM_PACKAGE", "instacart_ws_fio")
-LOGINOM_HISTORY_SERVICE = os.getenv("LOGINOM_HISTORY_SERVICE", "GetUserHistory")
-LOGINOM_TIMEOUT = int(os.getenv("LOGINOM_TIMEOUT", "45"))
+LOGINOM_URL = os.getenv("LOGINOM_URL", "https://edu.loginom.dev/lgi/rest/REPLACE_WITH_PACKAGE/GetUserHistory")
 GIGA_KEY = os.getenv("GIGA_KEY", "")
 GIGA_MODEL = os.getenv("GIGA_MODEL", "GigaChat-2")
-
+LOGINOM_TIMEOUT = int(os.getenv("LOGINOM_TIMEOUT", "45"))
+llm = GigaChat(credentials=GIGA_KEY, model=GIGA_MODEL, verify_ssl_certs=False,
+               temperature=0.3, max_tokens=500) if GIGA_KEY else None
 
 def get_user_history(user_id: int) -> list[dict[str, Any]]:
-    """Return up to ten most frequently purchased products for a client."""
     if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
         raise ValueError("user_id должен быть положительным целым числом")
-    service_url = os.getenv("LOGINOM_GETHISTORY_URL") or (
-        f"{LOGINOM_BASE_URL}/{LOGINOM_PACKAGE}/{LOGINOM_HISTORY_SERVICE}"
-    )
     try:
-        response = requests.post(service_url, json={"Variables": {"user_id": user_id}},
-                                 timeout=LOGINOM_TIMEOUT)
+        response = requests.post(LOGINOM_URL, json={"Variables": {"user_id": user_id}}, timeout=LOGINOM_TIMEOUT)
         response.raise_for_status()
-        data = response.json()
+        payload = response.json()
     except requests.RequestException as exc:
-        raise RuntimeError(f"Не удалось обратиться к Loginom ({LOGINOM_HISTORY_SERVICE}): {exc}") from exc
+        raise RuntimeError(f"Ошибка вызова Loginom GetUserHistory: {exc}") from exc
     except ValueError as exc:
-        raise RuntimeError("Loginom вернул ответ не в формате JSON") from exc
-    rows = data.get("DataSet", {}).get("Rows", []) if isinstance(data, dict) else []
+        raise RuntimeError("Loginom вернул некорректный JSON") from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError("Неожиданный формат ответа Loginom: ожидался JSON-объект")
+    rows = payload.get("DataSet", {}).get("Rows", [])
     if rows is None:
         return []
     if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
-        raise RuntimeError("Ожидался DataSet.Rows — список объектов с именами полей")
+        raise RuntimeError("Loginom: DataSet.Rows должен быть списком объектов")
     return rows[:10]
 
-
 def build_products_text(rows: list[dict[str, Any]]) -> str:
-    """Format product rows as compact prompt context."""
-    if not rows:
-        return "История покупок отсутствует."
     lines = []
     for i, row in enumerate(rows[:10], start=1):
-        name = row.get("product_name") or "Неизвестный товар"
-        department = row.get("department_rus") or row.get("department") or "не указан"
-        aisle = row.get("aisle") or "не указана"
-        count = row.get("order_count", 0)
-        lines.append(f"{i}. {name} — отдел: {department}, категория: {aisle}, покупок: {count}")
-    return "\n".join(lines)
-
+        lines.append(
+            f"{i}. {row.get('product_name', 'Неизвестный товар')} — "
+            f"отдел: {row.get('department_rus', row.get('department', 'не указан'))}, "
+            f"категория: {row.get('aisle', 'не указана')}, "
+            f"заказов: {row.get('order_count', 0)}"
+        )
+    return "\n".join(lines) if lines else "История покупок отсутствует."
 
 def ask_gigachat(user_id: int, products_text: str) -> tuple[str, str]:
-    """Generate a short recommendation grounded in the supplied purchase history."""
-    if not GIGA_KEY:
-        raise RuntimeError("Не задан GIGA_KEY. Добавьте ключ GigaChat в .env.")
-    system_prompt = (
-        "Ты — персональный помощник покупателя продуктового онлайн-магазина. "
-        "Анализируй только переданную историю покупок. Не утверждай, что клиент покупал "
-        "товары, которых нет в списке. Не делай медицинских выводов и не приписывай "
-        "клиенту личные качества. Обращайся на «вы». Дай краткий анализ и 1–2 совета, "
-        "не более 5–6 предложений."
-    )
-    user_prompt = (
-        f"Клиент: user_id={user_id}.\n\nИстория наиболее частых покупок:\n"
-        f"{products_text}\n\nСоставь короткий персональный анализ. Отделяй наблюдения "
-        "из списка от предположений и не выдумывай факты."
-    )
+    if llm is None:
+        raise RuntimeError("Не задан GIGA_KEY. Добавьте ключ GigaChat в .env или переменные окружения.")
+    system_prompt = """Ты — персональный помощник покупателя в продуктовом онлайн-магазине.
+Твоя задача — анализировать историю покупок клиента и давать ему понятные,
+дружелюбные рекомендации прямо в его личном кабинете.
+Обращайся к клиенту на «вы», тепло и по-человечески.
+Пиши кратко — не более 5–6 предложений.
+Используй только факты из переданной истории покупок; не выдумывай покупки."""
+    user_prompt = f"""Клиент с user_id={user_id} чаще всего покупает следующие товары:
+
+{products_text}
+
+Напишите клиенту короткий персональный анализ его покупок.
+Начните с того, что вы заметили в его предпочтениях.
+Дайте 1–2 дружеских совета — например, что стоит попробовать добавить
+или на что обратить внимание. Пишите так, как будто клиент читает это
+в своём личном кабинете."""
     try:
-        llm = GigaChat(credentials=GIGA_KEY, model=GIGA_MODEL, verify_ssl_certs=False,
-                       temperature=0.3, max_tokens=500)
         answer = llm.invoke([SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)])
     except Exception as exc:
         raise RuntimeError(f"Ошибка при обращении к GigaChat: {exc}") from exc
