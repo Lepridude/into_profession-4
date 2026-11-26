@@ -14,7 +14,7 @@ app.secret_key = os.getenv("SECRET_KEY", "local-dev-secret-change-before-deploy"
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                   SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "0") == "1",
                   MAX_CONTENT_LENGTH=1024 * 1024)
-LOGINOM_CHECK_URL = os.getenv("LOGINOM_CHECK_URL", "https://edu.loginom.dev/lgi/rest/REPLACE_WITH_PACKAGE/CheckUserId")
+LOGINOM_CHECK_URL = os.getenv("LOGINOM_CHECK_URL", "").strip()
 LOGINOM_TIMEOUT = int(os.getenv("LOGINOM_TIMEOUT", "45"))
 
 def load_business_rules():
@@ -29,21 +29,28 @@ def load_business_rules():
     return module
 
 def check_user_exists(user_id: int) -> bool:
-    try:
-        response = requests.post(LOGINOM_CHECK_URL, json={"Variables": {"user_id": user_id}}, timeout=LOGINOM_TIMEOUT)
-        response.raise_for_status()
-        payload = response.json()
-    except requests.RequestException as exc:
-        raise RuntimeError(f"Ошибка вызова Loginom CheckUserId: {exc}") from exc
-    except ValueError as exc:
-        raise RuntimeError("CheckUserId вернул некорректный JSON") from exc
-    if not isinstance(payload, dict):
-        raise RuntimeError("CheckUserId: ожидался JSON-объект")
-    rows = payload.get("DataSet", {}).get("Rows", [])
-    value = rows[0].get("user_exists") if rows and isinstance(rows[0], dict) else None
-    if value is None and isinstance(payload.get("Variables"), dict):
-        value = payload["Variables"].get("user_exists")
-    return str(value).strip().casefold() in {"1", "true", "yes", "да"}
+    # Prefer the dedicated CheckUserId method when it has been published.
+    if LOGINOM_CHECK_URL:
+        try:
+            response = requests.post(LOGINOM_CHECK_URL, json={"Variables": {"user_id": user_id}}, timeout=LOGINOM_TIMEOUT)
+            response.raise_for_status()
+            payload = response.json()
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Ошибка вызова Loginom CheckUserId: {exc}") from exc
+        except ValueError as exc:
+            raise RuntimeError("CheckUserId вернул некорректный JSON") from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError("CheckUserId: ожидался JSON-объект")
+        rows = payload.get("DataSet", {}).get("Rows", [])
+        value = rows[0].get("user_exists") if rows and isinstance(rows[0], dict) else None
+        if value is None and isinstance(payload.get("Variables"), dict):
+            value = payload["Variables"].get("user_exists")
+        return str(value).strip().casefold() in {"1", "true", "yes", "да"}
+
+    # The public teacher package currently exposes only GetUserHistory.
+    # In fallback mode, a non-empty history confirms the user exists in orders.
+    rules = load_business_rules()
+    return bool(rules.get_user_history(user_id))
 
 def page(*, user_id=None, products=None, prompt_text=None, recommendation=None, error=None, success=None):
     return render_template("index.html", user_id=user_id, products=products, prompt_text=prompt_text,
