@@ -11,64 +11,33 @@ load_dotenv()
 LOGINOM_BASE_URL = os.getenv("LOGINOM_BASE_URL", "https://edu.loginom.dev/lgi/rest").rstrip("/")
 LOGINOM_PACKAGE = os.getenv("LOGINOM_PACKAGE", "instacart_ws_fio")
 LOGINOM_HISTORY_SERVICE = os.getenv("LOGINOM_HISTORY_SERVICE", "GetUserHistory")
-LOGINOM_CHECK_SERVICE = os.getenv("LOGINOM_CHECK_SERVICE", "CheckUserId")
 LOGINOM_TIMEOUT = int(os.getenv("LOGINOM_TIMEOUT", "45"))
 GIGA_KEY = os.getenv("GIGA_KEY", "")
 GIGA_MODEL = os.getenv("GIGA_MODEL", "GigaChat-2")
 
 
-def _service_url(service_name: str) -> str:
-    override = os.getenv(f"LOGINOM_{service_name.upper()}_URL")
-    return override.strip() if override else f"{LOGINOM_BASE_URL}/{LOGINOM_PACKAGE}/{service_name}"
-
-
-def _post_loginom(service_name: str, user_id: int) -> dict[str, Any]:
-    payload = {"Variables": {"user_id": int(user_id)}}
+def get_user_history(user_id: int) -> list[dict[str, Any]]:
+    """Return up to ten most frequently purchased products for a client."""
+    if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
+        raise ValueError("user_id должен быть положительным целым числом")
+    service_url = os.getenv("LOGINOM_GETHISTORY_URL") or (
+        f"{LOGINOM_BASE_URL}/{LOGINOM_PACKAGE}/{LOGINOM_HISTORY_SERVICE}"
+    )
     try:
-        response = requests.post(_service_url(service_name), json=payload, timeout=LOGINOM_TIMEOUT)
+        response = requests.post(service_url, json={"Variables": {"user_id": user_id}},
+                                 timeout=LOGINOM_TIMEOUT)
         response.raise_for_status()
         data = response.json()
     except requests.RequestException as exc:
-        raise RuntimeError(f"Не удалось обратиться к Loginom ({service_name}): {exc}") from exc
+        raise RuntimeError(f"Не удалось обратиться к Loginom ({LOGINOM_HISTORY_SERVICE}): {exc}") from exc
     except ValueError as exc:
         raise RuntimeError("Loginom вернул ответ не в формате JSON") from exc
-    if not isinstance(data, dict):
-        raise RuntimeError("Неожиданный формат ответа Loginom")
-    return data
-
-
-def _extract_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
-    rows = data.get("DataSet", {}).get("Rows", [])
+    rows = data.get("DataSet", {}).get("Rows", []) if isinstance(data, dict) else []
     if rows is None:
         return []
     if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
         raise RuntimeError("Ожидался DataSet.Rows — список объектов с именами полей")
-    return rows
-
-
-def _check_user_id(user_id: int) -> bool:
-    """Call the separately published CheckUserId service."""
-    data = _post_loginom(LOGINOM_CHECK_SERVICE, user_id)
-    rows = _extract_rows(data)
-    if rows:
-        for key in ("user_exists", "exists", "is_exists", "found"):
-            if key in rows[0]:
-                return str(rows[0][key]).strip().casefold() in {"1", "true", "yes", "да"}
-    variables = data.get("Variables", {})
-    if isinstance(variables, dict):
-        for key in ("user_exists", "exists", "is_exists", "found"):
-            if key in variables:
-                return str(variables[key]).strip().casefold() in {"1", "true", "yes", "да"}
-    raise RuntimeError("CheckUserId: ожидается DataSet.Rows[0].user_exists со значением 1/0")
-
-
-def get_user_history(user_id: int) -> list[dict[str, Any]]:
-    """Return up to ten most frequently purchased products for an existing user."""
-    if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id <= 0:
-        raise ValueError("user_id должен быть положительным целым числом")
-    if not _check_user_id(user_id):
-        raise ValueError(f"Пользователь с user_id={user_id} не найден в Instacart")
-    return _extract_rows(_post_loginom(LOGINOM_HISTORY_SERVICE, user_id))[:10]
+    return rows[:10]
 
 
 def build_products_text(rows: list[dict[str, Any]]) -> str:
