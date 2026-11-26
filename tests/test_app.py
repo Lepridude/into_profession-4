@@ -17,6 +17,7 @@ class CheckResponse:
 def client(monkeypatch, exists=1):
     app.app.config.update(TESTING=True, SECRET_KEY="test-secret")
     monkeypatch.setattr(app, "load_business_rules", lambda: FakeRules)
+    monkeypatch.setattr(app, "LOGINOM_CHECK_URL", "https://unit.test/CheckUserId")
     monkeypatch.setattr(app.requests, "post", lambda *args, **kwargs: CheckResponse(exists))
     return app.app.test_client()
 
