@@ -2,7 +2,8 @@ import app
 
 class FakeRules:
     @staticmethod
-    def get_user_history(user_id): return [{"product_name":"Bananas","aisle":"Fresh fruit","department_rus":"Фрукты","order_count":4}]
+    def get_user_history(user_id):
+        return [{"product_name":"Bananas","aisle":"Fresh fruit","department_rus":"Фрукты","order_count":4}]
     @staticmethod
     def build_products_text(rows): return "1. Bananas"
     @staticmethod
@@ -36,3 +37,6 @@ def test_history_requires_login(monkeypatch):
 
 def test_login_rejects_nonexistent_user(monkeypatch):
     assert client(monkeypatch, exists=0).post("/login", data={"user_id":"2"}).status_code == 404
+
+def test_login_rejects_non_integer_user_id(monkeypatch):
+    assert client(monkeypatch).post("/login", data={"user_id":"abc"}).status_code == 400
