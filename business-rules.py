@@ -8,7 +8,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_gigachat.chat_models import GigaChat
 
 load_dotenv()
-LOGINOM_URL = os.getenv("LOGINOM_URL", "https://edu.loginom.dev/lgi/rest/REPLACE_WITH_PACKAGE/GetUserHistory")
+LOGINOM_URL = os.getenv("LOGINOM_URL", "https://edu.loginom.dev/lgi/rest/instacart_ws_teacher/GetUserHistory")
 GIGA_KEY = os.getenv("GIGA_KEY", "")
 GIGA_MODEL = os.getenv("GIGA_MODEL", "GigaChat-2")
 LOGINOM_TIMEOUT = int(os.getenv("LOGINOM_TIMEOUT", "45"))
