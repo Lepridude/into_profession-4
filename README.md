@@ -7,9 +7,9 @@ MVP рекомендательного сервиса Instacart: Flask прин�
 
 ## Структура
 - `app.py` — Flask-приложение и маршруты `/`, `/login`, `/logout`, `/history`, `/api/history`, `/health`.
-- `business-rules.py` — три функции из задания: `get_user_history`, `build_products_text`, `ask_gigachat`.
+- `business-rules.py` — ровно три функции из задания: `get_user_history`, `build_products_text`, `ask_gigachat`.
 - `templates/index.html` — интерфейс.
-- `notebooks/demo_rest_api.ipynb` — предварительная проверка Loginom REST и GigaChat.
+- `demo_rest_api.ipynb` — обязательный ноутбук в корне проекта; копия также лежит в `notebooks/`. Loginom REST и GigaChat.
 - `loginom/queries.sql`, `loginom/LOGINOM_SETUP.md` — SQL и инструкция создания сервисов.
 - `tests/` — модульные тесты; `.github/workflows/tests.yml` — CI.
 
