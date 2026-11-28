@@ -93,11 +93,17 @@ def history():
         if not rows:
             return page(user_id=user_id, error="Loginom вернул пустой список товаров."), 404
         products_text = rules.build_products_text(rows)
-        prompt_text, recommendation = rules.ask_gigachat(user_id, products_text)
-        return page(user_id=user_id, products=rows, prompt_text=prompt_text, recommendation=recommendation)
     except Exception as exc:
         app.logger.exception("History analysis failed for user_id=%s", user_id)
         return page(user_id=user_id, error=f"Ошибка: {exc}"), 502
+
+    try:
+        prompt_text, recommendation = rules.ask_gigachat(user_id, products_text)
+    except Exception:
+        app.logger.exception("GigaChat recommendation failed for user_id=%s", user_id)
+        return page(user_id=user_id, products=rows, error="Рекомендация GigaChat сейчас недоступна.")
+
+    return page(user_id=user_id, products=rows, prompt_text=prompt_text, recommendation=recommendation)
 
 @app.post("/api/history")
 def api_history():

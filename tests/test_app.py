@@ -33,6 +33,22 @@ def test_login_and_history(monkeypatch):
     assert "Bananas" in response.get_data(as_text=True)
     assert "Рекомендация" in response.get_data(as_text=True)
 
+def test_history_shows_purchases_when_gigachat_fails(monkeypatch):
+    def fail_recommendation(user_id, products_text):
+        raise RuntimeError("GigaChat service failure details")
+
+    c = client(monkeypatch)
+    monkeypatch.setattr(FakeRules, "ask_gigachat", staticmethod(fail_recommendation))
+    assert c.post("/login", data={"user_id": "1"}).status_code == 200
+
+    response = c.post("/history")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Bananas" in html
+    assert "Рекомендация GigaChat сейчас недоступна." in html
+    assert "GigaChat service failure details" not in html
+
 def test_history_requires_login(monkeypatch):
     assert client(monkeypatch).post("/history").status_code == 403
 
